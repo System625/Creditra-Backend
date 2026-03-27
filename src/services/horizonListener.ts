@@ -1,3 +1,4 @@
+import { sendDrawConfirmationWebhook } from "./drawWebhookService.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,6 +80,19 @@ export function clearEventHandlers(): void {
 
 
 async function dispatchEvent(event: HorizonEvent): Promise<void> {
+    // Send webhook for draw confirmation events
+    if (event.topics.includes("draw_confirmed")) {
+        try {
+            await sendDrawConfirmationWebhook(event);
+        } catch (err) {
+            console.error(
+                "[HorizonListener] Webhook delivery failed:",
+                err,
+            );
+        }
+    }
+
+    // Process other registered event handlers
     for (const handler of eventHandlers) {
         try {
         await handler(event);

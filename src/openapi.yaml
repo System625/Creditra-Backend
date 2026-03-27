@@ -25,6 +25,8 @@ tags:
     description: Credit line management
   - name: Risk
     description: On-chain risk evaluation
+  - name: Webhooks
+    description: Draw confirmation webhook management
 
 paths:
   /health:
@@ -246,6 +248,76 @@ paths:
               example:
                 error: walletAddress required
 
+  /api/webhooks/config:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookConfig
+      summary: Get webhook configuration
+      description: Returns the current webhook configuration (excluding sensitive data)
+      responses:
+        "200":
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookConfigResponse"
+              example:
+                urls: ["https://example.com/webhook"]
+                maxRetries: 3
+                initialBackoffMs: 1000
+                backoffMultiplier: 2.0
+                timeoutMs: 10000
+                configured: true
+
+  /api/webhooks/test:
+    post:
+      tags: [Webhooks]
+      operationId: testWebhooks
+      summary: Test webhook connectivity
+      description: Sends a test payload to all configured webhook endpoints
+      responses:
+        "200":
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResponse"
+              example:
+                total: 2
+                reachable: 1
+                unreachable: 1
+                results:
+                  - url: "https://example.com/webhook"
+                    reachable: true
+                  - url: "https://test.com/hook"
+                    reachable: false
+                    error: "Connection refused"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/webhooks/health:
+    get:
+      tags: [Webhooks]
+      operationId: getWebhookHealth
+      summary: Webhook service health check
+      description: Returns the health status of the webhook service
+      responses:
+        "200":
+          description: Webhook service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookHealthResponse"
+              example:
+                status: active
+                urls: 2
+                maxRetries: 3
+                timeoutMs: 10000
+
 components:
   schemas:
     HealthResponse:
@@ -386,3 +458,87 @@ components:
         id:
           type: string
           description: Present on 404 responses that reference a specific resource
+
+    WebhookConfigResponse:
+      type: object
+      required: [configured, maxRetries, initialBackoffMs, backoffMultiplier, timeoutMs]
+      properties:
+        urls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Configured webhook URLs
+        maxRetries:
+          type: integer
+          minimum: 0
+          description: Maximum number of retry attempts
+        initialBackoffMs:
+          type: integer
+          minimum: 100
+          description: Initial backoff delay in milliseconds
+        backoffMultiplier:
+          type: number
+          minimum: 1.0
+          description: Exponential backoff multiplier
+        timeoutMs:
+          type: integer
+          minimum: 1000
+          description: Request timeout in milliseconds
+        configured:
+          type: boolean
+          description: Whether webhooks are configured
+
+    WebhookTestResponse:
+      type: object
+      required: [total, reachable, unreachable, results]
+      properties:
+        total:
+          type: integer
+          description: Total number of webhook URLs tested
+        reachable:
+          type: integer
+          description: Number of successfully reachable webhooks
+        unreachable:
+          type: integer
+          description: Number of unreachable webhooks
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookTestResult"
+
+    WebhookTestResult:
+      type: object
+      required: [url, reachable]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Webhook URL that was tested
+        reachable:
+          type: boolean
+          description: Whether the webhook was reachable
+        error:
+          type: string
+          description: Error message if the webhook was unreachable
+
+    WebhookHealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, disabled]
+          description: Webhook service status
+        urls:
+          type: integer
+          description: Number of configured webhook URLs
+        maxRetries:
+          type: integer
+          description: Maximum retry attempts
+        timeoutMs:
+          type: integer
+          description: Request timeout in milliseconds
+        message:
+          type: string
+          description: Additional status information
