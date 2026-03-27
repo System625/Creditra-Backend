@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CreditLineService } from '../CreditLineService.js';
-import { CreditLineRepository } from '../../repositories/interfaces/CreditLineRepository.js';
-import { CreditLine, CreditLineStatus } from '../../models/CreditLine.js';
+import type { CreditLineRepository } from '../../repositories/interfaces/CreditLineRepository.js';
+import { type CreditLine, CreditLineStatus } from '../../models/CreditLine.js';
 
 describe('CreditLineService', () => {
   let service: CreditLineService;

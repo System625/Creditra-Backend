@@ -1,5 +1,5 @@
-import { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../models/CreditLine.js';
-import { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
+import type { CreditLine, CreateCreditLineRequest, UpdateCreditLineRequest } from '../models/CreditLine.js';
+import type { CreditLineRepository } from '../repositories/interfaces/CreditLineRepository.js';
 
 export class CreditLineService {
   constructor(private creditLineRepository: CreditLineRepository) {}
