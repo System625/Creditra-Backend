@@ -11,6 +11,7 @@ import { riskRouter } from './routes/risk.js';
 import { healthRouter } from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { Container } from './container/Container.js';
+import { isAllowedCorsOrigin, loadCorsPolicy } from './config/cors.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapiSpec = yaml.parse(
@@ -20,8 +21,15 @@ const openapiSpec = yaml.parse(
 export const app = express();
 const port = process.env.PORT ?? 3000;
 const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS ?? '30000', 10);
+const corsPolicy = loadCorsPolicy();
 
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, isAllowedCorsOrigin(origin, corsPolicy));
+    },
+  }),
+);
 app.use(express.json());
 
 app.use('/health', healthRouter);
