@@ -404,6 +404,36 @@ paths:
                 maxRetries: 3
                 timeoutMs: 10000
 
+  /api/risk/evaluations/{id}:
+    get:
+      tags: [Risk]
+      operationId: getRiskEvaluationById
+      summary: Fetch a stored risk evaluation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Risk evaluation identifier
+      responses:
+        "200":
+          description: Risk evaluation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskEvaluation"
+        "404":
+          description: Risk evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Risk evaluation not found
+                id: "abc123"
+
 components:
   schemas:
     HealthResponse:
