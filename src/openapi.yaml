@@ -123,8 +123,8 @@ paths:
       operationId: getCreditLineTransactions
       summary: List transaction history for a credit line
       description: |
-        Returns a paginated list of transactions (draws, repayments, and status
-        changes) for the given credit line. Supports optional filtering by
+        Returns a paginated list of transactions for the given credit line.
+        Supports optional filtering by
         transaction type and date range.
       parameters:
         - name: id
@@ -138,7 +138,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [draw, repayment, status_change]
+            enum: [borrow, repay, interest_accrual, fee, status_change]
           description: Filter by transaction type
         - name: from
           in: query
@@ -202,7 +202,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 data: null
-                error: "Invalid type filter. Must be one of: draw, repayment, status_change."
+                error: "Invalid type filter. Must be one of: borrow, repay, interest_accrual, fee, status_change."
         "404":
           description: Credit line not found
           content:
@@ -226,19 +226,22 @@ paths:
               $ref: "#/components/schemas/RiskEvaluateRequest"
             example:
               walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+              forceRefresh: false
       responses:
         "200":
           description: Risk evaluation result
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RiskEvaluateResponse"
+                $ref: "#/components/schemas/RiskEvaluateApiResponse"
               example:
-                walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
-                riskScore: 0
-                creditLimit: "0"
-                interestRateBps: 0
-                message: Risk engine not yet connected; placeholder response.
+                data:
+                  walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+                  riskScore: 72
+                  creditLimit: "720"
+                  interestRateBps: 640
+                  message: New risk evaluation completed
+                error: null
         "400":
           description: Missing required field
           content:
@@ -246,7 +249,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
-                error: walletAddress required
+                error: Validation failed
 
   /api/webhooks/config:
     get:
@@ -369,6 +372,10 @@ components:
           type: string
           description: EVM-compatible wallet address
           example: "0xAbC1234567890abcdef1234567890abcdef123456"
+        forceRefresh:
+          type: boolean
+          description: Optional hint to bypass cache and recalculate risk
+          default: false
 
     RiskEvaluateResponse:
       type: object
@@ -385,6 +392,16 @@ components:
         message:
           type: string
 
+    RiskEvaluateApiResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: "#/components/schemas/RiskEvaluateResponse"
+        error:
+          type: string
+          nullable: true
+
     Transaction:
       type: object
       required: [id, creditLineId, type, amount, currency, timestamp, metadata]
@@ -398,7 +415,7 @@ components:
           description: ID of the credit line this transaction belongs to
         type:
           type: string
-          enum: [draw, repayment, status_change]
+          enum: [borrow, repay, interest_accrual, fee, status_change]
           description: Transaction type
         amount:
           type: string
@@ -458,87 +475,3 @@ components:
         id:
           type: string
           description: Present on 404 responses that reference a specific resource
-
-    WebhookConfigResponse:
-      type: object
-      required: [configured, maxRetries, initialBackoffMs, backoffMultiplier, timeoutMs]
-      properties:
-        urls:
-          type: array
-          items:
-            type: string
-            format: uri
-          description: Configured webhook URLs
-        maxRetries:
-          type: integer
-          minimum: 0
-          description: Maximum number of retry attempts
-        initialBackoffMs:
-          type: integer
-          minimum: 100
-          description: Initial backoff delay in milliseconds
-        backoffMultiplier:
-          type: number
-          minimum: 1.0
-          description: Exponential backoff multiplier
-        timeoutMs:
-          type: integer
-          minimum: 1000
-          description: Request timeout in milliseconds
-        configured:
-          type: boolean
-          description: Whether webhooks are configured
-
-    WebhookTestResponse:
-      type: object
-      required: [total, reachable, unreachable, results]
-      properties:
-        total:
-          type: integer
-          description: Total number of webhook URLs tested
-        reachable:
-          type: integer
-          description: Number of successfully reachable webhooks
-        unreachable:
-          type: integer
-          description: Number of unreachable webhooks
-        results:
-          type: array
-          items:
-            $ref: "#/components/schemas/WebhookTestResult"
-
-    WebhookTestResult:
-      type: object
-      required: [url, reachable]
-      properties:
-        url:
-          type: string
-          format: uri
-          description: Webhook URL that was tested
-        reachable:
-          type: boolean
-          description: Whether the webhook was reachable
-        error:
-          type: string
-          description: Error message if the webhook was unreachable
-
-    WebhookHealthResponse:
-      type: object
-      required: [status]
-      properties:
-        status:
-          type: string
-          enum: [active, disabled]
-          description: Webhook service status
-        urls:
-          type: integer
-          description: Number of configured webhook URLs
-        maxRetries:
-          type: integer
-          description: Maximum retry attempts
-        timeoutMs:
-          type: integer
-          description: Request timeout in milliseconds
-        message:
-          type: string
-          description: Additional status information
