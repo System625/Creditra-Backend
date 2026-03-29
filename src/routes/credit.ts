@@ -12,6 +12,11 @@ import {
   CreditLineNotFoundError,
   TransactionType,
 } from "../services/creditService.js";
+import { loadRateLimitConfig } from "../config/rateLimit.js";
+import {
+  createRateLimitMiddleware,
+  createIpKeyGenerator,
+} from "../middleware/rateLimit.js";
 
 export const creditRouter = Router();
 const container = Container.getInstance();
