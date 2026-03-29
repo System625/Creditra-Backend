@@ -32,6 +32,8 @@ function handleServiceError(err: unknown, res: Response): void {
 creditRouter.get('/lines', async (req, res) => {
   try {
     const { offset, limit } = req.query;
+    const offsetNum = offset ? parseInt(offset as string) : undefined;
+    const limitNum = limit ? parseInt(limit as string) : undefined;
 
     const offsetNum =
       typeof offset === 'string' ? Number.parseInt(offset, 10) : undefined;
@@ -49,9 +51,9 @@ creditRouter.get('/lines', async (req, res) => {
       creditLines,
       pagination: {
         total,
-        offset: offsetNum ?? 0,
-        limit: limitNum ?? 100,
-      },
+        offset: offsetNum || 0,
+        limit: limitNum || 100
+      }
     });
   } catch (error) {
     const message =
@@ -98,22 +100,19 @@ creditRouter.post('/lines', validateBody(createCreditLineSchema), async (req, re
 
 creditRouter.put('/lines/:id', async (req, res) => {
   try {
-    const { creditLimit, interestRateBps, status } = req.body ?? {};
+    const { creditLimit, interestRateBps, status } = req.body;
 
-    const creditLine = await container.creditLineService.updateCreditLine(
-      req.params.id,
-      {
-        creditLimit,
-        interestRateBps,
-        status,
-      },
-    );
+    const creditLine = await container.creditLineService.updateCreditLine(req.params.id, {
+      creditLimit,
+      interestRateBps,
+      status
+    });
 
     if (!creditLine) {
       return res.status(404).json({ error: 'Credit line not found', id: req.params.id });
     }
 
-    return res.json(creditLine);
+    res.json(creditLine);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to update credit line';
@@ -206,6 +205,61 @@ creditRouter.get(
     }
   },
 );
+
+creditRouter.get("/lines/:id/transactions", validateQuery(transactionHistoryQuerySchema), async (req: Request, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const { type, from, to, page: pageParam, limit: limitParam } = req.query;
+
+  if (type !== undefined && !VALID_TRANSACTION_TYPES.includes(type as TransactionType)) {
+    fail(
+      res,
+      `Invalid type filter. Must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}.`,
+      400,
+    );
+    return;
+  }
+
+  if (from !== undefined && isNaN(new Date(from as string).getTime())) {
+    fail(res, "Invalid 'from' date. Must be a valid ISO 8601 date.", 400);
+    return;
+  }
+
+  if (to !== undefined && isNaN(new Date(to as string).getTime())) {
+    fail(res, "Invalid 'to' date. Must be a valid ISO 8601 date.", 400);
+    return;
+  }
+
+  const page = pageParam !== undefined ? parseInt(pageParam as string, 10) : 1;
+  const limit = limitParam !== undefined ? parseInt(limitParam as string, 10) : 20;
+
+  if (isNaN(page) || page < 1) {
+    fail(res, "Invalid 'page'. Must be a positive integer.", 400);
+    return;
+  }
+
+  if (isNaN(limit) || limit < 1 || limit > 100) {
+    fail(res, "Invalid 'limit'. Must be between 1 and 100.", 400);
+    return;
+  }
+
+  try {
+    // Note: getTransactions is imported from creditService but uses a functional style.
+    // In a real refactor we might move this to the container/service as well.
+    const { getTransactions: serviceGetTransactions } = await import("../services/creditService.js");
+    const result = serviceGetTransactions(
+      id,
+      {
+        type: type as TransactionType | undefined,
+        from: from as string | undefined,
+        to: to as string | undefined,
+      },
+      { page, limit },
+    );
+    ok(res, result);
+  } catch (err) {
+    handleServiceError(err, res);
+  }
+});
 
 creditRouter.post(
   '/lines/:id/suspend',

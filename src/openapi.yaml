@@ -231,13 +231,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RiskEvaluateResponse"
+                $ref: "#/components/schemas/RiskEvaluateApiResponse"
               example:
-                walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
-                riskScore: 0
-                creditLimit: "0"
-                interestRateBps: 0
-                message: Risk engine not yet connected; placeholder response.
+                data:
+                  walletAddress: "0xAbC1234567890abcdef1234567890abcdef123456"
+                  riskScore: 72
+                  creditLimit: "720"
+                  interestRateBps: 640
+                  message: New risk evaluation completed
+                error: null
         "400":
           description: Missing required field
           content:
@@ -245,7 +247,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
-                error: walletAddress required
+                error: Validation failed
 
 components:
   schemas:
@@ -317,6 +319,16 @@ components:
           type: number
         message:
           type: string
+
+    RiskEvaluateApiResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: "#/components/schemas/RiskEvaluateResponse"
+        error:
+          type: string
+          nullable: true
 
     Transaction:
       type: object
